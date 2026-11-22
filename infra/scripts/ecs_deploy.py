@@ -500,10 +500,23 @@ def status(a: Aws) -> None:
         pass
 
 
+AUTOSCALED = {"reco-service": 4, "rank-service": 3}
+
+
 def scale(a: Aws, count: int) -> None:
+    """Apaga (0) o enciende (>=1) todas las tareas. En los servicios con auto-scaling también se
+    ajusta el mínimo; si no, Application Auto Scaling los volvería a subir a 1."""
+    for name, max_tasks in AUTOSCALED.items():
+        a.application_autoscaling.register_scalable_target(
+            ServiceNamespace="ecs", ResourceId=f"service/{CLUSTER}/{name}", ScalableDimension="ecs:service:DesiredCount",
+            MinCapacity=min(count, 1), MaxCapacity=max_tasks if count else 0,
+        )
     for name in task_definitions(a):
         a.ecs.update_service(cluster=CLUSTER, service=name, desiredCount=count)
     log(f"servicios escalados a {count} tarea(s)")
+    if count:
+        wait_stable(a)
+        log("ojo: el NLB tarda ~3 min extra en marcar sano al ALB interno; antes de eso API Gateway puede dar 500")
 
 
 def down(a: Aws) -> None:
