@@ -40,3 +40,53 @@ python infra/scripts/sagemaker_endpoint.py delete                      # al term
   `OverheadLatency` p50 6,4 ms · p95 57 ms (incluye las primeras invocaciones en frío).
 
 Costo: `ml.m5.large` ≈ USD 0,12/h del crédito del lab. Borrar el endpoint al terminar cada sesión.
+
+## Microservicios en ECS Fargate — `scripts/ecs_deploy.py`
+
+```bash
+python infra/scripts/ecs_deploy.py up        # crea/actualiza todo (idempotente, ~12 min la primera vez)
+python infra/scripts/ecs_deploy.py status    # URLs y estado
+python infra/scripts/ecs_deploy.py images    # reconstruye imágenes y redespliega
+python infra/scripts/ecs_deploy.py scale 0   # apaga las tareas (conserva balanceadores y API)
+python infra/scripts/ecs_deploy.py down      # borra lo creado por el script
+```
+
+```
+Internet ──► ALB público :80 ──► dashboard (/)  ·  reco-service (/v1/recommendations, X-Api-Key)
+Clientes ──► API Gateway REST /prod (API keys + usage plans) ──► VPC Link ──► NLB interno :80
+              ──► ALB interno :80 ──► business-api · reco-service · rank-service ──► SageMaker reco-als
+business-api / report-worker ──► NLB :5672 ──► rabbitmq
+```
+
+| Servicio | Fargate | Expuesto en |
+|---|---|---|
+| reco-service | 0,25 vCPU / 512 MB, auto-scaling 1–4 (CPU > 60%) | ALB público y ALB interno |
+| rank-service | 0,25 vCPU / 512 MB, auto-scaling 1–3 | ALB interno |
+| business-api | 0,5 vCPU / 1 GB | ALB interno ← NLB ← API Gateway |
+| report-worker | 0,5 vCPU / 1 GB (misma imagen, `python -m src.worker`) | — |
+| rabbitmq | 0,25 vCPU / 1 GB (`rabbitmq:3.13-management`) | NLB :5672 (solo VPC) |
+| dashboard | 0,25 vCPU / 512 MB | ALB público |
+
+Seguridad: secreto `reco-ep3/app` en Secrets Manager (contraseña de RabbitMQ y API keys, inyectadas
+como variables por ECS); security groups que solo aceptan tráfico desde los balanceadores o la VPC;
+API Gateway expone únicamente las rutas de business-api (`/v1/rank` no es accesible); usage plans
+interno (≈100 req/min) y partner (≈20 req/min, 2.000/día); despliegues rolling 100/200 con circuit
+breaker y rollback automático; logs en CloudWatch `/ecs/reco-ep3` (30 días) y Container Insights.
+
+Limitaciones del lab (y qué se haría en producción): VPC por defecto con IP pública en las tareas
+para salir a internet (producción: subredes privadas + VPC endpoints/NAT); ALB público por HTTP sin
+dominio (producción: HTTPS con ACM + WAF); sin Cloud Map (se usa el ALB interno); caché en memoria
+(producción: ElastiCache); RabbitMQ sin volumen persistente (producción: Amazon MQ); todo con LabRole.
+
+### Evidencia del despliegue (2026-11-22)
+
+- 6 servicios `ACTIVE` con 1 tarea cada uno; todos los target groups `healthy` (el NLB→ALB tarda
+  ~3 min más que el resto en pasar a healthy: 5 chequeos de 30 s).
+- Widget (ALB público): 200 usuarios distintos sin caché → 200 respuestas `als`, 0 en respaldo con el
+  timeout de 150 ms. Latencia del lado del servidor (reco → rank → SageMaker):
+  `x-response-time-ms` p50 30 · p95 38 · p99 94 ms; CloudWatch ALB `TargetResponseTime` p95 36–40 ms.
+- API Gateway: sin key → 403; predict 200 (`als` e `item_similarity`); KPIs vía Athena ≈5,6 s
+  (1.ª consulta, luego caché); reporte `top_products` listo en 5 s con URL prefirmada SigV4;
+  ráfaga de 12 peticiones con el plan partner → 6 × 200 y 6 × 429; reporte con falla forzada →
+  3 intentos → `failed` (mensaje en `reports.dlq`).
+- Costo aproximado del stack encendido: ≈ USD 0,20/h + endpoint de SageMaker ≈ USD 0,12/h.

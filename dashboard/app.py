@@ -56,6 +56,20 @@ def get_api() -> BusinessApi:
 api = get_api()
 
 
+@st.cache_data(ttl=600)
+def load_metrics(path: str) -> dict | None:
+    """Métricas offline del modelo: archivo local (Docker) o s3://bucket/clave (ECS)."""
+    try:
+        if path.startswith("s3://"):
+            import boto3
+
+            bucket, _, key = path[len("s3://") :].partition("/")
+            return json.loads(boto3.client("s3").get_object(Bucket=bucket, Key=key)["Body"].read())
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 def show_error(exc: ApiError) -> None:
     st.error(f"business-api respondió {exc.status or 'sin conexión'}: {exc.message} (`{exc.code}`)")
 
@@ -255,11 +269,10 @@ if section == SECTIONS[3]:
 # ============================================================================= 5. Calidad del modelo
 
 if section == SECTIONS[4]:
-    path = Path(METRICS_PATH)
-    if not path.exists():
+    m = load_metrics(METRICS_PATH)
+    if m is None:
         st.warning(f"No se encontró {METRICS_PATH} (generar con ml/evaluate.py).")
     else:
-        m = json.loads(path.read_text(encoding="utf-8"))
         als, base, k = m["als"], m["popularity_baseline"], m["k"]
         st.markdown(
             f"Evaluación offline en el periodo de **test** (últimas 2 semanas, {als['users_evaluated']:,} usuarios). "

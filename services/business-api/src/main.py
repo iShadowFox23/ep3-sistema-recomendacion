@@ -62,10 +62,32 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="business-api",
     version="1.0.0",
-    description="API empresarial del sistema de recomendación de productos (Equipo 6, ITY1102).",
+    description="API empresarial del sistema de recomendación de productos (Equipo 6, ITY1102). "
+    "Autenticación: header `x-api-key` validado por API Gateway (usage plans con rate limiting).",
     openapi_tags=TAGS,
     lifespan=lifespan,
+    # Detrás de API Gateway la API vive bajo la etapa (/prod): así Swagger arma bien sus URLs.
+    root_path=env("ROOT_PATH", "") or "",
 )
+
+
+def custom_openapi():
+    """Declara el esquema de API key en el contrato para que Swagger muestre el botón "Authorize".
+    La validación real la hace API Gateway, no esta aplicación."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+
+    schema = get_openapi(
+        title=app.title, version=app.version, description=app.description, routes=app.routes, tags=TAGS, servers=app.servers
+    )
+    schema.setdefault("components", {})["securitySchemes"] = {"ApiKeyAuth": {"type": "apiKey", "in": "header", "name": "x-api-key"}}
+    schema["security"] = [{"ApiKeyAuth": []}]
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = custom_openapi
 
 
 # ----------------------------------------------------------------------------- errores y telemetría
