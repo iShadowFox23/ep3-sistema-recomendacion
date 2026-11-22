@@ -3,15 +3,32 @@ services:
     image: rabbitmq:3.13-management
     ports: ["5672:5672", "15672:15672"]
 
+  # Datos de serving: python ml/export_serving_data.py (genera build/serving/).
+  # Modelo: MODEL_BACKEND=stub (sin AWS) o MODEL_BACKEND=sagemaker (usa ~/.aws del lab, solo lectura).
   reco-service:
     build: ./services/reco-service
     ports: ["8080:8080"]
     environment:
       RANK_SERVICE_URL: http://rank-service:8080
+      # Local: rank-service llama a SageMaker por internet (~150 ms desde Chile); en ECS se usa 150.
+      RANK_TIMEOUT_MS: ${RANK_TIMEOUT_MS:-2000}
+      API_KEYS: local-dev-key
+      POPULAR_PATH: /serving/popular.json
+    volumes:
+      - ./build/serving:/serving:ro
+    depends_on: [rank-service]
 
   rank-service:
     build: ./services/rank-service
     ports: ["8081:8080"]
+    environment:
+      MODEL_BACKEND: ${MODEL_BACKEND:-stub}
+      SAGEMAKER_ENDPOINT: reco-als
+      AWS_REGION: us-east-1
+      CATALOG_PATH: /serving/catalog.csv
+    volumes:
+      - ./build/serving:/serving:ro
+      - ${USERPROFILE:-${HOME}}/.aws:/home/appuser/.aws:ro
 
   business-api:
     build: ./services/business-api

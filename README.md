@@ -25,8 +25,22 @@ RabbitMQ y dashboard en Streamlit.
 ## Ejecución local
 
 ```bash
-docker compose up --build
+python ml/export_serving_data.py              # catálogo y populares para los servicios (build/serving/)
+docker compose up --build                     # MODEL_BACKEND=stub: sin AWS
+MODEL_BACKEND=sagemaker docker compose up --build reco-service rank-service   # usa el endpoint real (~/.aws del lab)
+curl -H "x-api-key: local-dev-key" "http://localhost:8080/v1/recommendations?user_id=257597&context=home&k=5"
 ```
+
+### Flujo en línea
+
+`widget → reco-service (auth, caché, fallback) → rank-service (reglas) → endpoint SageMaker reco-als`
+
+- **reco-service** `GET /v1/recommendations?user_id&context=home|pdp|cart&k&item_id&category_id` (header `X-Api-Key`).
+  Caché TTL 15 min (Redis si `REDIS_URL`, si no memoria). Si rank-service no responde en `RANK_TIMEOUT_MS`
+  (150 ms en ECS), responde populares con stock (`degraded: true`).
+- **rank-service** `POST /v1/rank`: pide k×4 candidatos al modelo y aplica reglas: duplicados, contexto,
+  stock (estricta) y diversidad ≤3 por categoría (blanda: rellena si faltan productos). Devuelve cuántos
+  productos descartó cada regla (`rules`).
 
 - reco-service: http://localhost:8080/health
 - rank-service: http://localhost:8081/health
