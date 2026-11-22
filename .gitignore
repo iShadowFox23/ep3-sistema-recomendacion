@@ -32,3 +32,4 @@ CLAUDE.md
 # Artefactos de modelo (se suben a S3 / SageMaker, no a git)
 models/
 *.tar.gz
+build/
