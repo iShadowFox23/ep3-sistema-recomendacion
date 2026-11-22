@@ -1,5 +1,6 @@
+# Entrenamiento y evaluación local
 pandas>=2.2
 numpy>=1.26
 scipy>=1.13
-implicit>=0.7
+implicit==0.7.3
 pytest==8.3.4

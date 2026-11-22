@@ -1,0 +1,48 @@
+{
+  "k": 10,
+  "als": {
+    "precision@10": 0.008102583162980858,
+    "recall@10": 0.04166095862112312,
+    "f1@10": 0.013566614022034178,
+    "hitrate@10": 0.06522951124326333,
+    "ndcg@10": 0.02682912122401735,
+    "accuracy@10": 0.9999441609319191,
+    "users_evaluated": 5381,
+    "catalog_coverage": 0.02951084520232394
+  },
+  "popularity_baseline": {
+    "precision@10": 0.001412376881620517,
+    "recall@10": 0.004990149531878821,
+    "f1@10": 0.0022016221033605956,
+    "hitrate@10": 0.01245121724586508,
+    "ndcg@10": 0.0031981150481928938,
+    "accuracy@10": 0.9999435670572254,
+    "users_evaluated": 5381,
+    "catalog_coverage": 0.00012427487827719512
+  },
+  "lift_vs_baseline": {
+    "precision@10": 5.736842105263156,
+    "recall@10": 8.348639325330502,
+    "ndcg@10": 8.389041926173745
+  },
+  "split": "test",
+  "model": {
+    "model": "ALS (implicit feedback)",
+    "params": {
+      "factors": 128,
+      "regularization": 0.05,
+      "alpha": 100.0,
+      "iterations": 15,
+      "random_state": 42
+    },
+    "train_splits": [
+      "train",
+      "valid"
+    ],
+    "min_user_items": 2,
+    "n_users": 260421,
+    "n_items": 225307,
+    "n_interactions": 929715,
+    "train_seconds": 20.8
+  }
+}
