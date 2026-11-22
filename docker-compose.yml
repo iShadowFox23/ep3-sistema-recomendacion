@@ -2,6 +2,11 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management
     ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   # Datos de serving: python ml/export_serving_data.py (genera build/serving/).
   # Modelo: MODEL_BACKEND=stub (sin AWS) o MODEL_BACKEND=sagemaker (usa ~/.aws del lab, solo lectura).
@@ -30,22 +35,49 @@ services:
       - ./build/serving:/serving:ro
       - ${USERPROFILE:-${HOME}}/.aws:/home/appuser/.aws:ro
 
+  # business-api y report-worker comparten imagen: misma lógica de jobs/analítica, procesos distintos.
+  # Modo local por defecto (CSV + archivos compartidos). Modo AWS: ANALYTICS_BACKEND=athena,
+  # ATHENA_OUTPUT=s3://.../athena-results/, JOBS_TABLE=report_jobs, REPORTS_BUCKET=<bucket>.
   business-api:
     build: ./services/business-api
     ports: ["8082:8080"]
-    environment:
+    environment: &business-env
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       RECO_SERVICE_URL: http://reco-service:8080
-    depends_on: [rabbitmq]
+      RECO_API_KEY: local-dev-key
+      ANALYTICS_BACKEND: ${ANALYTICS_BACKEND:-local}
+      ANALYTICS_DIR: /analytics
+      ATHENA_OUTPUT: ${ATHENA_OUTPUT:-}
+      CATALOG_PATH: /serving/catalog.csv
+      JOBS_TABLE: ${JOBS_TABLE:-}
+      JOBS_DIR: /shared/jobs
+      REPORTS_BUCKET: ${REPORTS_BUCKET:-}
+      REPORTS_DIR: /shared/reports
+      ALLOW_FAULT_INJECTION: "true"
+      AWS_REGION: us-east-1
+    volumes: &business-volumes
+      - ./build/analytics:/analytics:ro
+      - ./build/serving:/serving:ro
+      - shared:/shared
+      - ${USERPROFILE:-${HOME}}/.aws:/home/appuser/.aws:ro
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+      reco-service: {condition: service_started}
 
   report-worker:
-    build: ./services/report-worker
-    environment:
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
-    depends_on: [rabbitmq]
+    build: ./services/business-api
+    command: ["python", "-m", "src.worker"]
+    environment: *business-env
+    volumes: *business-volumes
+    healthcheck: {disable: true}
+    depends_on:
+      rabbitmq: {condition: service_healthy}
 
   dashboard:
     build: ./dashboard
     ports: ["8501:8501"]
     environment:
       BUSINESS_API_URL: http://business-api:8080
+
+volumes:
+  shared:

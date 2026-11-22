@@ -6,7 +6,7 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 
 # ---- Etapa de runtime ----
 FROM python:3.12-slim
-RUN useradd --create-home appuser
+RUN useradd --create-home appuser && mkdir -p /shared && chown appuser /shared
 WORKDIR /app
 COPY --from=builder /root/.local /home/appuser/.local
 COPY ./src ./src

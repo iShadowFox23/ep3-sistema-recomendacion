@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [reco-service, rank-service, business-api, report-worker]
+        service: [reco-service, rank-service, business-api]
     defaults:
       run:
         working-directory: services/${{ matrix.service }}
