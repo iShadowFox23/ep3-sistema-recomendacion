@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,ficha de producto,CatchResponseError('HTTP 502'),4,2026-11-22T07:25:11Z,2026-11-22T07:29:35Z
+GET,home (usuario conocido),CatchResponseError('HTTP 502'),18,2026-11-22T07:25:11Z,2026-11-22T07:29:35Z
+GET,anónimo (cold-start),CatchResponseError('HTTP 502'),2,2026-11-22T07:25:46Z,2026-11-22T07:25:46Z

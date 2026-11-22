@@ -24,6 +24,7 @@ Decisiones por restricciones del lab (documentadas en infra/README.md):
 Uso (desde la raíz del repo, con credenciales del lab en ~/.aws):
     python infra/scripts/ecs_deploy.py up          # crea o actualiza todo (idempotente)
     python infra/scripts/ecs_deploy.py images      # solo reconstruye y publica imágenes + redeploy
+    python infra/scripts/ecs_deploy.py images --only reco-service   # un solo servicio
     python infra/scripts/ecs_deploy.py status      # URLs y estado de los servicios
     python infra/scripts/ecs_deploy.py scale 0     # apaga las tareas (conserva la infraestructura)
     python infra/scripts/ecs_deploy.py scale 1     # las vuelve a encender
@@ -53,6 +54,7 @@ SECRET_NAME = f"{P}/app"
 AZS = ("us-east-1a", "us-east-1b")
 TAGS = [{"Key": "project", "Value": P}]
 
+AUTOSCALED = {"reco-service": (2, 6), "rank-service": (2, 4)}  # (mínimo, máximo) de tareas
 IMAGES = {  # repositorio ECR -> carpeta con el Dockerfile
     "reco-service": "services/reco-service",
     "rank-service": "services/rank-service",
@@ -126,7 +128,7 @@ def network(a: Aws) -> None:
 # ============================================================================ imágenes
 
 
-def images(a: Aws) -> None:
+def images(a: Aws, only: set[str] | None = None) -> None:
     token = a.ecr.get_authorization_token()["authorizationData"][0]
     user, password = base64.b64decode(token["authorizationToken"]).decode().split(":", 1)
     registry = token["proxyEndpoint"].replace("https://", "")
@@ -134,6 +136,8 @@ def images(a: Aws) -> None:
     tag = time.strftime("v%Y%m%d-%H%M%S")
     a.state.setdefault("images", {})
     for repo, folder in IMAGES.items():
+        if only and repo not in only:
+            continue
         try:
             a.ecr.create_repository(repositoryName=f"{P}/{repo}", imageScanningConfiguration={"scanOnPush": True}, tags=TAGS)
         except a.ecr.exceptions.RepositoryAlreadyExistsException:
@@ -310,14 +314,14 @@ def task_definitions(a: Aws) -> dict[str, dict]:
                          secrets=[{"name": "RABBITMQ_DEFAULT_USER", "valueFrom": f"{sec}:RABBITMQ_USER::"},
                                   {"name": "RABBITMQ_DEFAULT_PASS", "valueFrom": f"{sec}:RABBITMQ_PASS::"}],
                          lbs=[("rabbit", 5672)]),
-        "rank-service": dict(cpu=256, memory=512, port=8080, image=st["images"]["rank-service"],
+        "rank-service": dict(cpu=512, memory=1024, port=8080, image=st["images"]["rank-service"],
                              env=common_env + [
                                  {"name": "MODEL_BACKEND", "value": "sagemaker"},
                                  {"name": "SAGEMAKER_ENDPOINT", "value": "reco-als"},
                                  {"name": "MODEL_TIMEOUT_S", "value": "1.0"},
                                  {"name": "CATALOG_PATH", "value": f"s3://{bucket}/serving/catalog.csv"},
                              ], secrets=[], lbs=[("rank", 8080)]),
-        "reco-service": dict(cpu=256, memory=512, port=8080, image=st["images"]["reco-service"],
+        "reco-service": dict(cpu=512, memory=1024, port=8080, image=st["images"]["reco-service"],
                              env=common_env + [
                                  {"name": "RANK_SERVICE_URL", "value": internal},
                                  {"name": "RANK_TIMEOUT_MS", "value": "150"},
@@ -379,10 +383,12 @@ def services(a: Aws, only: set[str] | None = None) -> None:
 
 
 def autoscaling(a: Aws) -> None:
-    for name, max_tasks in (("reco-service", 4), ("rank-service", 3)):
+    # Diseño EP2: 0,5 vCPU y mínimo 2 réplicas (una por AZ). La primera prueba de carga con 0,25 vCPU y
+    # mínimo 1 saturó reco-service al 100% de CPU con 60 req/s antes de que el auto-scaling reaccionara.
+    for name, (min_tasks, max_tasks) in AUTOSCALED.items():
         resource = f"service/{CLUSTER}/{name}"
         a.application_autoscaling.register_scalable_target(
-            ServiceNamespace="ecs", ResourceId=resource, ScalableDimension="ecs:service:DesiredCount", MinCapacity=1, MaxCapacity=max_tasks)
+            ServiceNamespace="ecs", ResourceId=resource, ScalableDimension="ecs:service:DesiredCount", MinCapacity=min_tasks, MaxCapacity=max_tasks)
         a.application_autoscaling.put_scaling_policy(
             PolicyName=f"{name}-cpu60", ServiceNamespace="ecs", ResourceId=resource, ScalableDimension="ecs:service:DesiredCount",
             PolicyType="TargetTrackingScaling",
@@ -390,7 +396,7 @@ def autoscaling(a: Aws) -> None:
                 "TargetValue": 60.0, "ScaleOutCooldown": 60, "ScaleInCooldown": 180,
                 "PredefinedMetricSpecification": {"PredefinedMetricType": "ECSServiceAverageCPUUtilization"}},
         )
-    log("auto-scaling: reco-service 1-4 y rank-service 1-3 tareas por CPU > 60%")
+    log("auto-scaling: reco-service 2-6 y rank-service 2-4 tareas por CPU > 60%")
 
 
 def wait_stable(a: Aws) -> None:
@@ -500,16 +506,13 @@ def status(a: Aws) -> None:
         pass
 
 
-AUTOSCALED = {"reco-service": 4, "rank-service": 3}
-
-
 def scale(a: Aws, count: int) -> None:
     """Apaga (0) o enciende (>=1) todas las tareas. En los servicios con auto-scaling también se
     ajusta el mínimo; si no, Application Auto Scaling los volvería a subir a 1."""
-    for name, max_tasks in AUTOSCALED.items():
+    for name, (min_tasks, max_tasks) in AUTOSCALED.items():
         a.application_autoscaling.register_scalable_target(
             ServiceNamespace="ecs", ResourceId=f"service/{CLUSTER}/{name}", ScalableDimension="ecs:service:DesiredCount",
-            MinCapacity=min(count, 1), MaxCapacity=max_tasks if count else 0,
+            MinCapacity=min_tasks if count else 0, MaxCapacity=max_tasks if count else 0,
         )
     for name in task_definitions(a):
         a.ecs.update_service(cluster=CLUSTER, service=name, desiredCount=count)
@@ -587,6 +590,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=["up", "images", "status", "scale", "down"])
     parser.add_argument("count", nargs="?", type=int, default=1)
+    parser.add_argument("--only", nargs="+", help="con 'images': servicios a reconstruir y redesplegar")
     args = parser.parse_args()
     a = Aws()
     if args.command == "up":
@@ -600,8 +604,9 @@ def main() -> None:
         wait_stable(a)
         status(a)
     elif args.command == "images":
-        images(a)
-        services(a)
+        only = set(args.only) if args.only else None
+        images(a, only)
+        services(a, only)
         wait_stable(a)
     elif args.command == "status":
         status(a)

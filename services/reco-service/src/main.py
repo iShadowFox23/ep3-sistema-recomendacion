@@ -146,6 +146,16 @@ async def recommendations(
         items, strategy = state.fallback.recommend(k, category_id, set(item_id))
         cold_start, rules = True, None
 
+    # Si las reglas de stock dejaron menos de k productos (o ninguno), se completa con populares con
+    # stock: el widget nunca queda vacío. Detectado en la prueba de carga (1,4% de respuestas vacías).
+    backfilled = 0
+    if len(items) < k:
+        present = {int(i["item_id"]) for i in items} | set(item_id)
+        extra, _ = state.fallback.recommend(k - len(items), category_id, present)
+        for item in extra:
+            item["reason"] = {"type": "backfill_popular"}
+        items, backfilled = items + extra, len(extra)
+
     body = {
         "user_id": user_id,
         "context": context,
@@ -155,6 +165,7 @@ async def recommendations(
         "degraded": degraded,
         "degraded_reason": reason,
         "rules": rules,
+        "backfilled": backfilled,
     }
     if not degraded:  # no se cachean respuestas de respaldo: al recuperarse el modelo, se vuelve a personalizar
         state.cache.set(cache_key, body)

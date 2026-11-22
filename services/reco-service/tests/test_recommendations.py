@@ -118,3 +118,24 @@ def test_memory_cache_expires_entries():
     cache = MemoryCache(ttl_s=-1)
     cache.set("a", {"x": 1})
     assert cache.get("a") is None
+
+
+def test_empty_ranking_is_backfilled_with_popular_in_stock():
+    """Si las reglas de stock descartan todos los candidatos, el widget no queda vacío."""
+    rank = FakeRank()
+    empty = {"items": [], "strategy": "als", "cold_start": False, "rules": {"removed_unavailable": 12}}
+    rank.handler = lambda request: httpx.Response(200, json=empty)
+    with make_client(rank) as client:
+        body = client.get("/v1/recommendations", params={"user_id": 42, "k": 3}).json()
+    assert body["degraded"] is False and body["strategy"] == "als"
+    assert body["backfilled"] == 3 and [i["item_id"] for i in body["items"]] == [100, 101, 102]
+    assert all(i["reason"]["type"] == "backfill_popular" for i in body["items"])
+
+
+def test_partial_ranking_is_topped_up_without_duplicates():
+    rank = FakeRank()
+    partial = {"items": [{"item_id": 100, "score": 0.9, "reason": {"type": "similar_to_history"}}], "strategy": "als", "cold_start": False}
+    rank.handler = lambda request: httpx.Response(200, json=partial)
+    with make_client(rank) as client:
+        body = client.get("/v1/recommendations", params={"user_id": 42, "k": 3}).json()
+    assert [i["item_id"] for i in body["items"]] == [100, 101, 102] and body["backfilled"] == 2

@@ -1,0 +1,7 @@
+{
+  "ok": 54077,
+  "degraded": 32472,
+  "cache_hit": 14726,
+  "degraded_pct": 60.05,
+  "cache_hit_pct": 27.23
+}
