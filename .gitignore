@@ -1,0 +1,30 @@
+# Dataset (pesado y con licencia propia; ver data/README.md)
+data/raw/
+data/processed/*
+!data/processed/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Credenciales / entorno (las credenciales de AWS Academy NUNCA van al repo)
+.env
+*.pem
+.aws/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+~$*
+
+# Entregables y material con nombres del equipo/docente (no se publican)
+docs/
+presentations/
+CLAUDE.md
