@@ -78,6 +78,10 @@ services:
     ports: ["8501:8501"]
     environment:
       BUSINESS_API_URL: http://business-api:8080
+      METRICS_PATH: /app/reports/metrics_test.json
+    volumes:
+      - ./reports/metrics_test.json:/app/reports/metrics_test.json:ro
+    depends_on: [business-api]
 
 volumes:
   shared:

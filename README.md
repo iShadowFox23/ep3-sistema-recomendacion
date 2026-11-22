@@ -14,7 +14,7 @@ RabbitMQ y dashboard en Streamlit.
 | `services/rank-service/` | Reglas de negocio y ranking; invoca el endpoint de SageMaker |
 | `services/business-api/` | API empresarial (`/v1/recommendations/predict`, `/v1/insights/*`, `/v1/reports`) |
 | `services/business-api/src/worker.py` | report-worker: consumidor de RabbitMQ que genera reportes batch (misma imagen que business-api, proceso aparte) |
-| `dashboard/` | Dashboard Streamlit (KPIs, promociones, interpretabilidad) |
+| `dashboard/` | Dashboard Streamlit: KPIs, recomendaciones en vivo con su motivo, promociones, reportes y calidad del modelo (consume solo business-api) |
 | `ml/` | Preparación de datos, entrenamiento, evaluación e inferencia de SageMaker |
 | `infra/` | Scripts y plantillas de despliegue en AWS Academy |
 | `tests/load/` | Pruebas de carga con Locust |
