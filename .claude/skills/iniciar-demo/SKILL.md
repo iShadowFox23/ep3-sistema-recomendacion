@@ -16,8 +16,9 @@ Proyecto en `C:\Users\lizbe\Proyectos\ep3-sistema-recomendacion`, fuera de OneDr
 3. **Nunca** pedir las credenciales en el chat. Esperar a que el usuario confirme.
 4. Validar: `.venv\Scripts\python -c "import boto3; print(boto3.client('sts').get_caller_identity()['Arn'])"`. Si falla con un error de token expirado o inválido, pedirle que repita el paso 2 (no reintentar en bucle).
 
-## 2. Encender el sistema (~10 min)
-- `.venv\Scripts\python infra\scripts\demo.py prepare`, con `run_in_background` (tarda más de 2 minutos). Al terminar, leer la salida.
+## 2. Encender el sistema (~10 min; ~18 min si hay que recrear el endpoint)
+- Antes, ver si existe el endpoint: `.venv\Scripts\python infra\scripts\sagemaker_endpoint.py status`. Si no existe (se borra entre demos para ahorrar), recrearlo desde el artefacto que sigue en S3: `.venv\Scripts\python infra\scripts\sagemaker_endpoint.py deploy autoscale`, con `run_in_background`; espera a InService (~5–8 min). No usar `package`/`upload`: en el portátil no está `models/`.
+- Luego: `.venv\Scripts\python infra\scripts\demo.py prepare`, con `run_in_background` (tarda más de 2 minutos). Al terminar, leer la salida.
 - Lo esperado es "Listo para presentar.". Si alguna línea dice FALLA: esperar 2 min y correr `demo.py check`, hasta 3 veces. Si un 500 persiste, el NLB todavía no está listo (ver Parte D de `docs/EP3_Paso_a_paso_Demo.md`).
 - `prepare` regenera `build/postman_environment.json`. Las API keys no cambian entre días, así que Postman no necesita reimportarlo salvo que se haya hecho `ecs_deploy.py down`.
 
