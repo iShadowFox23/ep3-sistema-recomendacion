@@ -170,6 +170,8 @@ async def predict(body: PredictRequest, request: Request):
     if body.category_id is not None:
         params.append(("category_id", body.category_id))
     headers = {"x-request-id": request.state.request_id, "x-api-key": request.app.state.reco_api_key}
+    if request.headers.get("cache-control"):  # p. ej. "no-cache" para forzar una predicción nueva
+        headers["cache-control"] = request.headers["cache-control"]
     try:
         resp = await request.app.state.http.get("/v1/recommendations", params=params, headers=headers)
         resp.raise_for_status()

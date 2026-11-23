@@ -10,13 +10,52 @@
       "item": [
         {
           "name": "CP-07 Sin API key -> 403",
-          "request": {"method": "GET", "url": "{{api_url}}/v1/insights/kpis"},
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('403 sin API key', () => pm.response.to.have.status(403));"]}}]
+          "request": {
+            "method": "GET",
+            "url": "{{api_url}}/v1/insights/kpis"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 sin API key', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "CP-09 Ruta interna /v1/rank no expuesta -> 403",
-          "request": {"method": "POST", "header": [{"key": "x-api-key", "value": "{{api_key}}"}], "url": "{{api_url}}/v1/rank", "body": {"mode": "raw", "raw": "{}", "options": {"raw": {"language": "json"}}}},
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('rank no accesible desde internet', () => pm.expect(pm.response.code).to.be.oneOf([403, 404]));"]}}]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": "{{api_url}}/v1/rank",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('rank no accesible desde internet', () => pm.expect(pm.response.code).to.be.oneOf([403, 404]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -27,50 +66,152 @@
           "name": "CP-05 Usuario conocido (home) -> ALS con explicación",
           "request": {
             "method": "POST",
-            "header": [{"key": "x-api-key", "value": "{{api_key}}"}, {"key": "x-request-id", "value": "demo-home-001"}],
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "x-request-id",
+                "value": "demo-home-001"
+              },
+              {
+                "key": "Cache-Control",
+                "value": "no-cache",
+                "description": "Fuerza una predicción nueva (sin caché) para que la traza recorra business-api → reco-service → rank-service → SageMaker"
+              }
+            ],
             "url": "{{api_url}}/v1/recommendations/predict",
-            "body": {"mode": "raw", "raw": "{\n  \"user_id\": 257597,\n  \"context\": \"home\",\n  \"k\": 5\n}", "options": {"raw": {"language": "json"}}}
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 257597,\n  \"context\": \"home\",\n  \"k\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
-          "event": [{"listen": "test", "script": {"exec": [
-            "pm.test('200 OK', () => pm.response.to.have.status(200));",
-            "const b = pm.response.json();",
-            "pm.test('5 productos', () => pm.expect(b.items.length).to.eql(5));",
-            "pm.test('estrategia personalizada', () => pm.expect(b.strategy).to.eql('als'));",
-            "pm.test('cada producto trae su motivo', () => b.items.forEach(i => pm.expect(i.reason).to.be.an('object')));"
-          ]}}]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('5 productos', () => pm.expect(b.items.length).to.eql(5));",
+                  "pm.test('estrategia personalizada', () => pm.expect(b.strategy).to.eql('als'));",
+                  "pm.test('cada producto trae su motivo', () => b.items.forEach(i => pm.expect(i.reason).to.be.an('object')));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Ficha de producto -> productos parecidos",
           "request": {
             "method": "POST",
-            "header": [{"key": "x-api-key", "value": "{{api_key}}"}, {"key": "x-request-id", "value": "demo-pdp-001"}],
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "x-request-id",
+                "value": "demo-pdp-001"
+              },
+              {
+                "key": "Cache-Control",
+                "value": "no-cache",
+                "description": "Fuerza una predicción nueva (sin caché) para que la traza recorra business-api → reco-service → rank-service → SageMaker"
+              }
+            ],
             "url": "{{api_url}}/v1/recommendations/predict",
-            "body": {"mode": "raw", "raw": "{\n  \"context\": \"pdp\",\n  \"recent_items\": [355908],\n  \"k\": 4\n}", "options": {"raw": {"language": "json"}}}
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": \"pdp\",\n  \"recent_items\": [355908],\n  \"k\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('similitud de productos', () => pm.expect(pm.response.json().strategy).to.eql('item_similarity'));"]}}]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('similitud de productos', () => pm.expect(pm.response.json().strategy).to.eql('item_similarity'));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "CP-04 Visitante nuevo (cold-start)",
           "request": {
             "method": "POST",
-            "header": [{"key": "x-api-key", "value": "{{api_key}}"}],
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
             "url": "{{api_url}}/v1/recommendations/predict",
-            "body": {"mode": "raw", "raw": "{\n  \"user_id\": 999999999,\n  \"category_id\": 1532,\n  \"k\": 4\n}", "options": {"raw": {"language": "json"}}}
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 999999999,\n  \"category_id\": 1532,\n  \"k\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('cold-start', () => pm.expect(pm.response.json().cold_start).to.eql(true));"]}}]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('cold-start', () => pm.expect(pm.response.json().cold_start).to.eql(true));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "CP-06 Contexto inválido -> 422",
           "request": {
             "method": "POST",
-            "header": [{"key": "x-api-key", "value": "{{api_key}}"}],
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
             "url": "{{api_url}}/v1/recommendations/predict",
-            "body": {"mode": "raw", "raw": "{\n  \"context\": \"checkout\"\n}", "options": {"raw": {"language": "json"}}}
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"context\": \"checkout\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
-          "event": [{"listen": "test", "script": {"exec": [
-            "pm.test('422', () => pm.response.to.have.status(422));",
-            "pm.test('formato de error común', () => pm.expect(pm.response.json().error.code).to.eql('invalid_request'));"
-          ]}}]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422', () => pm.response.to.have.status(422));",
+                  "pm.test('formato de error común', () => pm.expect(pm.response.json().error.code).to.eql('invalid_request'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -79,13 +220,49 @@
       "item": [
         {
           "name": "KPIs del embudo (Athena)",
-          "request": {"method": "GET", "header": [{"key": "x-api-key", "value": "{{api_key}}"}], "url": "{{api_url}}/v1/insights/kpis"},
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('200 y resumen', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().summary.visitors).to.be.above(0); });"]}}]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": "{{api_url}}/v1/insights/kpis"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y resumen', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().summary.visitors).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Promociones sugeridas (prescriptivo)",
-          "request": {"method": "GET", "header": [{"key": "x-api-key", "value": "{{api_key}}"}], "url": "{{api_url}}/v1/insights/promotions?limit=5"},
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('acciones con motivo', () => pm.response.json().items.forEach(i => pm.expect(i.reason).to.be.a('string')));"]}}]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": "{{api_url}}/v1/insights/promotions?limit=5"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('acciones con motivo', () => pm.response.json().items.forEach(i => pm.expect(i.reason).to.be.a('string')));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -96,33 +273,102 @@
           "name": "CP-11a Solicitar reporte -> 202",
           "request": {
             "method": "POST",
-            "header": [{"key": "x-api-key", "value": "{{api_key}}"}],
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
             "url": "{{api_url}}/v1/reports",
-            "body": {"mode": "raw", "raw": "{\n  \"report_type\": \"top_products\",\n  \"params\": {\"from\": \"2015-09-05\", \"to\": \"2015-09-18\", \"limit\": 20}\n}", "options": {"raw": {"language": "json"}}}
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"report_type\": \"top_products\",\n  \"params\": {\"from\": \"2015-09-05\", \"to\": \"2015-09-18\", \"limit\": 20}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
-          "event": [{"listen": "test", "script": {"exec": [
-            "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
-            "pm.collectionVariables.set('job_id', pm.response.json().job_id);"
-          ]}}]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
+                  "pm.collectionVariables.set('job_id', pm.response.json().job_id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "CP-11b Estado del reporte (repetir hasta done)",
-          "request": {"method": "GET", "header": [{"key": "x-api-key", "value": "{{api_key}}"}], "url": "{{api_url}}/v1/reports/{{job_id}}"},
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('estado válido', () => pm.expect(pm.response.json().status).to.be.oneOf(['queued','running','retrying','done']));"]}}]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": "{{api_url}}/v1/reports/{{job_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('estado válido', () => pm.expect(pm.response.json().status).to.be.oneOf(['queued','running','retrying','done']));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "CP-12 Reporte con falla forzada (reintentos -> DLQ)",
           "request": {
             "method": "POST",
-            "header": [{"key": "x-api-key", "value": "{{api_key}}"}],
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
             "url": "{{api_url}}/v1/reports",
-            "body": {"mode": "raw", "raw": "{\n  \"report_type\": \"kpi_summary\",\n  \"params\": {\"force_error\": true}\n}", "options": {"raw": {"language": "json"}}}
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"report_type\": \"kpi_summary\",\n  \"params\": {\"force_error\": true}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
-          "event": [{"listen": "test", "script": {"exec": ["pm.collectionVariables.set('failed_job_id', pm.response.json().job_id);"]}}]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('failed_job_id', pm.response.json().job_id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "CP-12 Estado del reporte fallido (esperar ~10 s)",
-          "request": {"method": "GET", "header": [{"key": "x-api-key", "value": "{{api_key}}"}], "url": "{{api_url}}/v1/reports/{{failed_job_id}}"}
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": "{{api_url}}/v1/reports/{{failed_job_id}}"
+          }
         }
       ]
     },
@@ -131,8 +377,26 @@
       "item": [
         {
           "name": "CP-08 Plan partner (ejecutar 10 veces seguidas con el Runner -> 429)",
-          "request": {"method": "GET", "header": [{"key": "x-api-key", "value": "{{partner_key}}"}], "url": "{{api_url}}/v1/insights/kpis"},
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('200 o 429 por límite', () => pm.expect(pm.response.code).to.be.oneOf([200, 429]));"]}}]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{partner_key}}"
+              }
+            ],
+            "url": "{{api_url}}/v1/insights/kpis"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 o 429 por límite', () => pm.expect(pm.response.code).to.be.oneOf([200, 429]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -141,11 +405,38 @@
       "item": [
         {
           "name": "Widget home (API key de la tienda)",
-          "request": {"method": "GET", "header": [{"key": "x-api-key", "value": "{{widget_key}}"}], "url": "{{alb_url}}/v1/recommendations?user_id=257597&context=home&k=5"},
-          "event": [{"listen": "test", "script": {"exec": ["pm.test('200 y latencia del servidor en header', () => { pm.response.to.have.status(200); pm.expect(pm.response.headers.get('x-response-time-ms')).to.exist; });"]}}]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{widget_key}}"
+              }
+            ],
+            "url": "{{alb_url}}/v1/recommendations?user_id=257597&context=home&k=5"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 y latencia del servidor en header', () => { pm.response.to.have.status(200); pm.expect(pm.response.headers.get('x-response-time-ms')).to.exist; });"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
   ],
-  "variable": [{"key": "job_id", "value": ""}, {"key": "failed_job_id", "value": ""}]
+  "variable": [
+    {
+      "key": "job_id",
+      "value": ""
+    },
+    {
+      "key": "failed_job_id",
+      "value": ""
+    }
+  ]
 }

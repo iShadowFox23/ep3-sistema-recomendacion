@@ -139,3 +139,13 @@ def test_partial_ranking_is_topped_up_without_duplicates():
     with make_client(rank) as client:
         body = client.get("/v1/recommendations", params={"user_id": 42, "k": 3}).json()
     assert [i["item_id"] for i in body["items"]] == [100, 101, 102] and body["backfilled"] == 2
+
+
+def test_cache_control_no_cache_forces_a_fresh_prediction():
+    rank = FakeRank()
+    with make_client(rank) as client:
+        client.get("/v1/recommendations", params={"user_id": 42})
+        fresh = client.get("/v1/recommendations", params={"user_id": 42}, headers={"Cache-Control": "no-cache"}).json()
+        cached = client.get("/v1/recommendations", params={"user_id": 42}).json()
+    assert fresh["cache"] == "miss" and cached["cache"] == "hit"
+    assert rank.calls == 2

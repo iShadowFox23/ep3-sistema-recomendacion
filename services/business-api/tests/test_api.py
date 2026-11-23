@@ -97,3 +97,8 @@ def test_openapi_documents_all_business_endpoints(client):
     paths = client.get("/openapi.json").json()["paths"]
     for path in ("/v1/recommendations/predict", "/v1/insights/kpis", "/v1/insights/promotions", "/v1/reports", "/v1/reports/{job_id}"):
         assert path in paths
+
+
+def test_predict_forwards_cache_control_to_reco(client, reco_calls):
+    client.post("/v1/recommendations/predict", json={"user_id": 7}, headers={"Cache-Control": "no-cache"})
+    assert reco_calls[-1].headers["cache-control"] == "no-cache"

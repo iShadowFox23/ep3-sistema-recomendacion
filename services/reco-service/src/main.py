@@ -129,7 +129,9 @@ async def recommendations(
     payload = {key: value for key, value in payload.items() if value is not None}
     cache_key = "reco:" + hashlib.sha1(repr(sorted(payload.items())).encode()).hexdigest()
 
-    cached = state.cache.get(cache_key)
+    # Cache-Control: no-cache (semántica HTTP estándar) fuerza a recalcular; la respuesta nueva igual se guarda.
+    bypass = "no-cache" in request.headers.get("cache-control", "").lower()
+    cached = None if bypass else state.cache.get(cache_key)
     if cached is not None:
         return {**cached, "request_id": request.state.request_id, "cache": "hit"}
 
