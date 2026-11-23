@@ -90,3 +90,14 @@ dominio (producción: HTTPS con ACM + WAF); sin Cloud Map (se usa el ALB interno
   ráfaga de 12 peticiones con el plan partner → 6 × 200 y 6 × 429; reporte con falla forzada →
   3 intentos → `failed` (mensaje en `reports.dlq`).
 - Costo aproximado del stack encendido: ≈ USD 0,20/h + endpoint de SageMaker ≈ USD 0,12/h.
+
+## Demo en vivo — `scripts/demo.py`
+
+```bash
+python infra/scripts/demo.py prepare    # enciende, espera el NLB, calienta Athena/modelo, genera build/postman_environment.json y verifica
+python infra/scripts/demo.py check      # verificación rápida de cada punto de la demo
+python infra/scripts/demo.py teardown   # apaga tareas y limita el endpoint a 1 instancia
+```
+
+Colección de Postman: `tests/postman/reco-ep3.postman_collection.json` (CP-04 a CP-12, con tests). Las API keys
+van en el environment generado por `prepare`, nunca en el repositorio.

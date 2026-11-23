@@ -18,7 +18,7 @@ RabbitMQ y dashboard en Streamlit.
 | `ml/` | Preparación de datos, entrenamiento, evaluación e inferencia de SageMaker |
 | `infra/` | Scripts y plantillas de despliegue en AWS Academy |
 | `tests/load/` | Pruebas de carga con Locust |
-| `tests/postman/` | Colección Postman (pruebas de API y demo en vivo) |
+| `tests/postman/` | Colección Postman (pruebas de API y demo en vivo; environment generado por `infra/scripts/demo.py prepare`) |
 | `data/` | Dataset (fuera de git, ver `data/README.md`) |
 | `docs/`, `presentations/` | Informe acumulativo, guion y presentaciones |
 
