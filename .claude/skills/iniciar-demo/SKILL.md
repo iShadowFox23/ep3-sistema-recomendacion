@@ -10,9 +10,9 @@ Proyecto en `C:\Users\lizbe\Proyectos\ep3-sistema-recomendacion`, fuera de OneDr
 ## 1. Credenciales (las pega el usuario)
 1. Abrir el archivo: `Start-Process notepad "$env:USERPROFILE\.aws\credentials"`.
 2. Darle al usuario estas instrucciones, en este orden:
-   - Chrome → AWS Academy → Learner Lab → **Start Lab** → esperar el círculo verde.
+   - Edge → AWS Academy → Learner Lab → **Start Lab** → esperar el círculo verde.
    - **AWS Details → AWS CLI: Show** → copiar el bloque → **reemplazar** todo el contenido del Bloc de notas → Ctrl+S.
-   - Clic en **AWS** junto al círculo verde, para que la consola quede con la sesión iniciada en Chrome (la usan las pestañas del paso 4). Dejar esa pestaña abierta.
+   - Clic en **AWS** junto al círculo verde, para que la consola quede con la sesión iniciada en Edge (la usan las pestañas del paso 4). Dejar esa pestaña abierta.
 3. **Nunca** pedir las credenciales en el chat. Esperar a que el usuario confirme.
 4. Validar: `.venv\Scripts\python -c "import boto3; print(boto3.client('sts').get_caller_identity()['Arn'])"`. Si falla con un error de token expirado o inválido, pedirle que repita el paso 2 (no reintentar en bucle).
 
@@ -29,10 +29,10 @@ Proyecto en `C:\Users\lizbe\Proyectos\ep3-sistema-recomendacion`, fuera de OneDr
 - Si algo falla, informar qué falló y el plan B de la Parte D de la guía. No tocar la infraestructura sin preguntar.
 
 ## 4. Pestañas
-- Confirmar que la consola de AWS ya está abierta en Chrome (paso 1.2). Luego: `cmd /c docs\abrir_pestanas_demo.bat`.
+- Confirmar que la consola de AWS ya está abierta en Edge (paso 1.2). Luego: `cmd /c docs\abrir_pestanas_demo.bat`.
 
 ## 5. Informe final al usuario
 - Resultado de `prepare`, del smoke y de la traza.
-- URLs: dashboard `http://reco-ep3-public-349259138.us-east-1.elb.amazonaws.com/` (en Chrome: "Configuración avanzada → Continuar al sitio"), Swagger `https://sa0tjw1dzi.execute-api.us-east-1.amazonaws.com/prod/docs`.
+- URLs: dashboard `http://reco-ep3-public-349259138.us-east-1.elb.amazonaws.com/` (en Edge: "Avanzado → Continuar a …(no seguro)"), Swagger `https://sa0tjw1dzi.execute-api.us-east-1.amazonaws.com/prod/docs`.
 - Lo que queda manual: en Postman, elegir el entorno **"Recomendador EP3 (demo)"** y correr CP-05 una vez. En Logs Insights, cargar la consulta guardada `reco-ep3/demo-traza` con rango 15m, sin presionar Run. Zoom al 125%. **No molestar** en Windows. Dejar la pantalla en las láminas.
 - Costo: encendido ≈ USD 0,36/h. Al terminar, usar `/apagar-demo`.
